@@ -1,0 +1,81 @@
+//
+// Created by rin on 16/02/2026.
+//
+
+#include "libADC.h"
+
+int initADC() {
+
+    //configure the pins (PA4 PA5 and PA6)
+    //enable clock to port A
+    RCC->AHB1ENR |= RCC_AHB1ENR_GPIOAEN;
+    //set to analog mode (See Table 28 and section 7.3.2 item 3 of stm32f4 reference manual)
+    GPIOA->MODER |= GPIO_MODER_MODE4_0;
+    GPIOA->MODER |= GPIO_MODER_MODE4_1;
+    GPIOA->MODER |= GPIO_MODER_MODE5_0;
+    GPIOA->MODER |= GPIO_MODER_MODE5_1;
+    GPIOA->MODER |= GPIO_MODER_MODE6_0;
+    GPIOA->MODER |= GPIO_MODER_MODE6_1;
+
+
+    //set ADCCLK prescaler to 4 to meet max 36 MHz requirement (sets to 21 Mhz at 84 MHz APB2 speed)
+    ADC->CCR |= ADC_CCR_ADCPRE_0;
+
+    //for more speed, try triple ADC interleave mode
+    //(but the pins selected only go to ADC 1 and 2, so try double interleave mode)
+
+    //enable bus clock
+    RCC->APB2ENR |= RCC_APB2ENR_ADC1EN;
+
+    ADC1->CR2 |= ADC_CR2_ADON;  //turn on ADC
+
+    ADC1->CR2 |= ADC_CR2_CONT;  //set it to continuous
+    ADC1->CR1 |= ADC_CR1_SCAN;  //enable scan mode for multiple channels
+    //12 bit resolution selected by default
+
+    //set channel sequence
+    //3 channels to convert (1 channel is 0, 2 is 1, 3 is 2)
+    ADC1->SQR1 |= 2 << ADC_SQR1_L_Pos;
+    //the actual channel order
+    ADC1->SQR3 |= 4 << ADC_SQR3_SQ1_Pos;
+    ADC1->SQR3 |= 5 << ADC_SQR3_SQ2_Pos;
+    ADC1->SQR3 |= 6 << ADC_SQR3_SQ3_Pos;
+
+    //set all channel sample time to 15 to stop them affecting each other
+    //or not?
+    //ADC1->SMPR2 |= 1 << ADC_SMPR2_SMP4_Pos;
+    //ADC1->SMPR2 |= 1 << ADC_SMPR2_SMP5_Pos;
+    //ADC1->SMPR2 |= 1 << ADC_SMPR2_SMP6_Pos;
+
+    //for DMA, either, peripheral -> memory and then memory -> peripheral
+    //or try direct peripheral to peripheral based on
+    //https://community.st.com/t5/stm32-mcus-products/stm32f407-dma-transfer-peripheral-to-peripheral/td-p/414462
+
+    //init DMA - ADC1 is channel 0 stream 0 of DMA2
+    RCC->AHB1ENR |= RCC_AHB1ENR_DMA2EN;
+    DMA2_Stream0->CR = 0;		//reset just in case
+    //channel zero is default
+    //peripheral to memory is default
+    //direct transfer is default (DMA_SxFCR_DMDIS of DMA2_Stream0->FCR should be 0)
+
+    DMA2_Stream0->CR |= DMA_SxCR_PL_1;			//Priority level 10b, High
+    DMA2_Stream0->CR |= DMA_SxCR_MSIZE_0;		//memory data size 01b half word (16bit)
+    DMA2_Stream0->CR |= DMA_SxCR_PSIZE_0;		//peripheral data size 01b half word (16bit)
+    DMA2_Stream0->CR |= DMA_SxCR_MINC;			//increment memory address after each transfer
+    DMA2_Stream0->CR |= DMA_SxCR_CIRC;			//Circular mode, reset address back to 0 after transfers done
+    //peripheral to memory direction selected by default
+    DMA2_Stream0->NDTR = 3;			//number of data items to be transferred
+
+    DMA2_Stream0->PAR = &(ADC1->DR);				//Peripheral address of transfer
+    DMA2_Stream0->M0AR = &(sensorValues);		//memory address of transfer
+
+    //enable DMA requests
+    ADC1->CR2 |= ADC_CR2_DMA;
+    ADC1->CR2 |= ADC_CR2_DDS;       //okay. NO ONE SAID TO ENABLE THIS! thanks to https://community.st.com/t5/stm32-mcus-products/adc-to-dac-using-dma-in-stm32f4/td-p/623403
+    DMA2_Stream0->CR |= DMA_SxCR_EN;
+
+    //start conversions
+    ADC1->CR2 |= ADC_CR2_SWSTART;
+
+    return 0;
+}
