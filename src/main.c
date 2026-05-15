@@ -3,9 +3,10 @@
 #include <string.h>
 #include "libCLCK.h"
 #include "libADC.h"
+#include "libDAC.h"
 #include "usb.h"    //had to disable linecoding set check to work
 
-#define numSensors 3
+//#define numSensors 3 //+2
 
 const char separator[] = "\n";
 
@@ -25,12 +26,16 @@ int main() {
     USB_Init();
 
     initADC();  //yeah it would help if you actually called it before debugging
+    initDAC();
+
+    //try to offset instrumentation amplifier REF voltage to try and reduce common mode voltage related issues
+    setIAVref(4096/2);  //max 2^12 = 4096
 
     GPIOC->ODR &= ~(1<<1);
 
-    uint8_t t = 0;
+    //uint8_t t = 0;
 
-    uint8_t outBuffer[numSensors * 2];
+    //uint8_t outBuffer[numSensors * 2];
 
     //seems like adc sample time too low, S&H capacitor not fully discharging or something so channels affect each other
     //https://community.st.com/t5/stm32-mcus-products/one-adc-channel-affecting-the-other-adc-channels-stm32f407/td-p/433816
@@ -62,7 +67,7 @@ int main() {
         */
 
         char outString[15];  //not 16 because apparently sprintf treats \n as one character (makes sense)
-        sprintf(outString, "%04u,%04u,%04u\n", sensorValues[0], sensorValues[1], sensorValues[2]);
+        sprintf(outString, "%04u,%04u,%04u\n", sensorValues[0], sensorValues[1], sensorValues[2]); //+2
 
         /*
         if (DMA2_Stream0->NDTR == 3) {
