@@ -9,14 +9,22 @@ int initADC() {
     //configure the pins (PA4 PA5 and PA6)
     //enable clock to port A
     RCC->AHB1ENR |= RCC_AHB1ENR_GPIOAEN;
+    RCC->AHB1ENR |= RCC_AHB1ENR_GPIOCEN; //for voltage and current sensing
     //set to analog mode (See Table 28 and section 7.3.2 item 3 of stm32f4 reference manual)
-    GPIOA->MODER |= GPIO_MODER_MODE4_0;
-    GPIOA->MODER |= GPIO_MODER_MODE4_1;
     GPIOA->MODER |= GPIO_MODER_MODE5_0;
     GPIOA->MODER |= GPIO_MODER_MODE5_1;
     GPIOA->MODER |= GPIO_MODER_MODE6_0;
     GPIOA->MODER |= GPIO_MODER_MODE6_1;
+    GPIOA->MODER |= GPIO_MODER_MODE7_0;
+    GPIOA->MODER |= GPIO_MODER_MODE7_1;
+    //for voltage and current sensing
+    GPIOC->MODER |= GPIO_MODER_MODE4_0;
+    GPIOC->MODER |= GPIO_MODER_MODE4_1;
+    GPIOC->MODER |= GPIO_MODER_MODE5_0;
+    GPIOC->MODER |= GPIO_MODER_MODE5_1;
 
+    //So ADC writes each conversion, one after the other, into the output register. Read it each write and send to
+    //the appropriate memory address
 
     //set ADCCLK prescaler to 4 to meet max 36 MHz requirement (sets to 21 Mhz at 84 MHz APB2 speed)
     ADC->CCR |= ADC_CCR_ADCPRE_0;
@@ -35,11 +43,13 @@ int initADC() {
 
     //set channel sequence
     //3 channels to convert (1 channel is 0, 2 is 1, 3 is 2)
-    ADC1->SQR1 |= 2 << ADC_SQR1_L_Pos;
+    ADC1->SQR1 |= 4 << ADC_SQR1_L_Pos;
     //the actual channel order
-    ADC1->SQR3 |= 4 << ADC_SQR3_SQ1_Pos;
-    ADC1->SQR3 |= 5 << ADC_SQR3_SQ2_Pos;
-    ADC1->SQR3 |= 6 << ADC_SQR3_SQ3_Pos;
+    ADC1->SQR3 |= 5 << ADC_SQR3_SQ1_Pos;
+    ADC1->SQR3 |= 6 << ADC_SQR3_SQ2_Pos;
+    ADC1->SQR3 |= 7 << ADC_SQR3_SQ3_Pos;
+    ADC1->SQR3 |= 14 << ADC_SQR3_SQ3_Pos;
+    ADC1->SQR3 |= 15 << ADC_SQR3_SQ3_Pos;
 
     //set all channel sample time to 15 to stop them affecting each other
     //or not?
@@ -64,7 +74,7 @@ int initADC() {
     DMA2_Stream0->CR |= DMA_SxCR_MINC;			//increment memory address after each transfer
     DMA2_Stream0->CR |= DMA_SxCR_CIRC;			//Circular mode, reset address back to 0 after transfers done
     //peripheral to memory direction selected by default
-    DMA2_Stream0->NDTR = 3;			//number of data items to be transferred
+    DMA2_Stream0->NDTR = numSensors;			//number of data items to be transferred
 
     DMA2_Stream0->PAR = &(ADC1->DR);				//Peripheral address of transfer
     DMA2_Stream0->M0AR = &(sensorValues);		//memory address of transfer

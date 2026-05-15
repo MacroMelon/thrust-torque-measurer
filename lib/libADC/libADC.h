@@ -7,7 +7,7 @@
 
 #include <stm32f405xx.h>
 
-#define numSensors 3
+#define numSensors 5
 
 volatile uint16_t sensorValues[numSensors];
 
