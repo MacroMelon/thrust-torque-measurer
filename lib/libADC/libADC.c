@@ -48,8 +48,8 @@ int initADC() {
     ADC1->SQR3 |= 5 << ADC_SQR3_SQ1_Pos;
     ADC1->SQR3 |= 6 << ADC_SQR3_SQ2_Pos;
     ADC1->SQR3 |= 7 << ADC_SQR3_SQ3_Pos;
-    ADC1->SQR3 |= 14 << ADC_SQR3_SQ3_Pos;
-    ADC1->SQR3 |= 15 << ADC_SQR3_SQ3_Pos;
+    ADC1->SQR3 |= 14 << ADC_SQR3_SQ4_Pos;
+    ADC1->SQR3 |= 15 << ADC_SQR3_SQ5_Pos;
 
     //set all channel sample time to 15 to stop them affecting each other
     //or not?

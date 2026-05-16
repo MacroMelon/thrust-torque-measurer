@@ -10,6 +10,8 @@
 
 const char separator[] = "\n";
 
+uint16_t loadCellOffsets[3] = {0, 175, 225};
+
 int main() {
 
     //debug LED
@@ -29,7 +31,7 @@ int main() {
     initDAC();
 
     //try to offset instrumentation amplifier REF voltage to try and reduce common mode voltage related issues
-    setIAVref(4096/2);  //max 2^12 = 4096
+    setIAVref(2700);  //max 2^12 = 4096
 
     GPIOC->ODR &= ~(1<<1);
 
@@ -66,8 +68,9 @@ int main() {
 
         */
 
-        char outString[15];  //not 16 because apparently sprintf treats \n as one character (makes sense)
-        sprintf(outString, "%04u,%04u,%04u\n", sensorValues[0], sensorValues[1], sensorValues[2]); //+2
+        char outString[16];  //does sprintf treat /n as 1 character?
+        sprintf(outString, "%04u,%04u,%04u\n", sensorValues[0], sensorValues[1], sensorValues[2]);
+        //also send back voltage, current, requested motor speed, requested tilt angle and requested tilt amount
 
         /*
         if (DMA2_Stream0->NDTR == 3) {
