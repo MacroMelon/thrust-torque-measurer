@@ -11,7 +11,7 @@
 
 const char separator[] = "\n";
 
-uint16_t loadCellOffsets[3] = {0, 175, 225};
+uint16_t loadCellOffsets[3] = {0, 175, 225}; //should this be done during post-processing?
 
 // [0] angle, [1] scaler, [2] throttle
 uint16_t testMotorValues[3];
@@ -106,8 +106,16 @@ int main() {
 
         */
 
-        char outString[21];  //does sprintf treat /n as 1 character?
-        sprintf(outString, "%04u,%04u,%04u,%04u\n", sensorValues[0], sensorValues[1], sensorValues[2], sensorValues[3]);
+        char outString[40];  //does sprintf treat /n as 1 character?
+        sprintf(outString, "%04u,%04u,%04u,%04u,%04u,%03u,%04u,%04u\n",
+            sensorValues[0],
+            sensorValues[1],
+            sensorValues[2],
+            sensorValues[3],
+            sensorValues[4],
+            testMotorValues[0],
+            testMotorValues[1],
+            testMotorValues[2]);
         //also send back voltage, current, requested motor speed, requested tilt angle and requested tilt amount
 
         /*
@@ -119,7 +127,7 @@ int main() {
         }*/
         //USB_StartTXTransfer(1, outBuffer, numSensors * 2);
         //USB_StartTXTransfer(1, outb, strlen(outb));
-        USB_StartTXTransfer(1, outString, 15);
+        USB_StartTXTransfer(1, outString, 39); //does sprintf squish \n into one character?
         WaitForTick();
     }
 
