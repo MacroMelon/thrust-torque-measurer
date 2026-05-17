@@ -4,6 +4,7 @@
 #include "libCLCK.h"
 #include "libADC.h"
 #include "libDAC.h"
+#include "libI2C.h"
 #include "usb.h"    //had to disable linecoding set check to work
 
 //#define numSensors 3 //+2
@@ -11,6 +12,28 @@
 const char separator[] = "\n";
 
 uint16_t loadCellOffsets[3] = {0, 175, 225};
+
+// [0] angle, [1] scaler, [2] throttle
+uint16_t testMotorValues[3];
+
+uint32_t buildPacket(uint16_t motorValues[3])
+{
+    //structure:
+    /*
+     *  [ header(2) | angle(9) | scaler(10) | throttle(11) ]
+     */
+    uint32_t final_packet = 0;
+    //strip values to required number of bits:
+    motorValues[0] &= (0x01FF);
+    motorValues[1] &= (0x03FF);
+    motorValues[2] &= (0x07FF);
+    //add em all into one packet
+    final_packet = (motorValues[0] << 21);
+    final_packet |= (motorValues[1] << 11);
+    final_packet |= (motorValues[2]);
+    final_packet |= (2 << 30);	//header
+    return final_packet;
+}
 
 int main() {
 
@@ -25,6 +48,17 @@ int main() {
 
     __enable_irq();
 
+    I2C_init_100kHz(0x24);
+
+    //wait for a bit for motor controller to initialise
+    ms_delay(1000);
+
+    //ensure motor stays off
+    testMotorValues[0] = 0;
+    testMotorValues[1] = 0;
+    testMotorValues[2] = 0;
+    Motor1_SendPacket(buildPacket(testMotorValues));
+
     USB_Init();
 
     initADC();  //yeah it would help if you actually called it before debugging
@@ -33,28 +67,32 @@ int main() {
     //try to offset instrumentation amplifier REF voltage to try and reduce common mode voltage related issues
     setIAVref(2700);  //max 2^12 = 4096
 
-    GPIOC->ODR &= ~(1<<1);
+    //wait for a bit, just for... ummm reasons I guess?
+    ms_delay(2000);
 
-    //uint8_t t = 0;
+    GPIOC->ODR &= ~(1<<1);
 
     //uint8_t outBuffer[numSensors * 2];
 
-    //seems like adc sample time too low, S&H capacitor not fully discharging or something so channels affect each other
-    //https://community.st.com/t5/stm32-mcus-products/one-adc-channel-affecting-the-other-adc-channels-stm32f407/td-p/433816
-    //or not?
+    uint32_t motorControlRateControlCounter = 0;
 
     while (1) {
 
-        /*
-        sensorValues[0] = 3*t + 4;
-        sensorValues[1] = 10*t +3;
-        sensorValues[2] = 2*t + 6;
-        if (t > 250) {
-            t = 0;
+        // ---------------- Motor Control --------------------------
+
+        //run this every 100 loop iterations so its around 15 Hz
+        if (motorControlRateControlCounter >= 100) {
+            motorControlRateControlCounter = 0;
+
+            //send control packet
+            testMotorValues[0] = 0;
+            testMotorValues[1] = 100;
+            testMotorValues[2] = 400;
+            Motor1_SendPacket(buildPacket(testMotorValues));
         }
-        else {
-            t++;
-        }*/
+        motorControlRateControlCounter++;
+
+        // ---------------- Sense Data -----------------------------
 
         /*
         for (int i = 0; i < numSensors; i++) {
@@ -68,8 +106,8 @@ int main() {
 
         */
 
-        char outString[16];  //does sprintf treat /n as 1 character?
-        sprintf(outString, "%04u,%04u,%04u\n", sensorValues[0], sensorValues[1], sensorValues[2]);
+        char outString[21];  //does sprintf treat /n as 1 character?
+        sprintf(outString, "%04u,%04u,%04u,%04u\n", sensorValues[0], sensorValues[1], sensorValues[2], sensorValues[3]);
         //also send back voltage, current, requested motor speed, requested tilt angle and requested tilt amount
 
         /*
