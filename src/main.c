@@ -51,7 +51,7 @@ int main() {
 
     __enable_irq();
 
-    //I2C_init_100kHz(0x24);
+    I2C_init_100kHz(0x24);
 
     //wait for a bit for motor controller to initialise
     ms_delay(1000);
@@ -61,7 +61,7 @@ int main() {
     //testMotorValues[1] = 0;
     //testMotorValues[2] = 0;
     //Motor1_SendPacket(buildPacket(testMotorValues));
-    //Motor1_SendPacket(0);
+    Motor1_SendPacket(0);
 
     USB_Init();
 
@@ -127,7 +127,8 @@ int main() {
         //Ideally we'd send back a confirmation that the forwarding was sucessfull
         //but ideally we'd also have more than 2 burn out weeks to finish ig
         if (currentMotorControlPacket != newMotorControlPacket){
-            //Motor1_SendPacket(currentMotorControlPacket);
+            Motor1_SendPacket(newMotorControlPacket);
+            currentMotorControlPacket = newMotorControlPacket;
             GPIOC->ODR &= ~(1<<1);
         }
 
