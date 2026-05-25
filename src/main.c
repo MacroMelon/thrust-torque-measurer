@@ -13,27 +13,30 @@ const char separator[] = "\n";
 
 uint16_t loadCellOffsets[3] = {0, 175, 225}; //should this be done during post-processing?
 
-// [0] angle, [1] scaler, [2] throttle
-uint16_t testMotorValues[3];
+// // [0] angle, [1] scaler, [2] throttle
+// uint16_t testMotorValues[3];
+//
+// uint32_t buildPacket(uint16_t motorValues[3])
+// {
+//     //structure:
+//     /*
+//      *  [ header(2) | angle(9) | scaler(10) | throttle(11) ]
+//      */
+//     uint32_t final_packet = 0;
+//     //strip values to required number of bits:
+//     motorValues[0] &= (0x01FF);
+//     motorValues[1] &= (0x03FF);
+//     motorValues[2] &= (0x07FF);
+//     //add em all into one packet
+//     final_packet = (motorValues[0] << 21);
+//     final_packet |= (motorValues[1] << 11);
+//     final_packet |= (motorValues[2]);
+//     final_packet |= (2 << 30);	//header
+//     return final_packet;
+// }
 
-uint32_t buildPacket(uint16_t motorValues[3])
-{
-    //structure:
-    /*
-     *  [ header(2) | angle(9) | scaler(10) | throttle(11) ]
-     */
-    uint32_t final_packet = 0;
-    //strip values to required number of bits:
-    motorValues[0] &= (0x01FF);
-    motorValues[1] &= (0x03FF);
-    motorValues[2] &= (0x07FF);
-    //add em all into one packet
-    final_packet = (motorValues[0] << 21);
-    final_packet |= (motorValues[1] << 11);
-    final_packet |= (motorValues[2]);
-    final_packet |= (2 << 30);	//header
-    return final_packet;
-}
+uint32_t currentMotorControlPacket = 0;
+uint32_t newMotorControlPacket = 0;
 
 int main() {
 
@@ -54,10 +57,11 @@ int main() {
     ms_delay(1000);
 
     //ensure motor stays off
-    testMotorValues[0] = 0;
-    testMotorValues[1] = 0;
-    testMotorValues[2] = 0;
+    //testMotorValues[0] = 0;
+    //testMotorValues[1] = 0;
+    //testMotorValues[2] = 0;
     //Motor1_SendPacket(buildPacket(testMotorValues));
+    //Motor1_SendPacket(0);
 
     USB_Init();
 
@@ -74,23 +78,23 @@ int main() {
 
     //uint8_t outBuffer[numSensors * 2];
 
-    uint32_t motorControlRateControlCounter = 0;
+    //uint32_t motorControlRateControlCounter = 0;
 
     while (1) {
 
         // ---------------- Motor Control --------------------------
 
         //run this every 100 loop iterations so its around 15 Hz
-        if (motorControlRateControlCounter >= 100) {
-            motorControlRateControlCounter = 0;
-
-            //send control packet
-            testMotorValues[0] = 0;
-            testMotorValues[1] = 100;
-            testMotorValues[2] = 400;
-            //Motor1_SendPacket(buildPacket(testMotorValues));
-        }
-        motorControlRateControlCounter++;
+        // if (motorControlRateControlCounter >= 100) {
+        //     motorControlRateControlCounter = 0;
+        //
+        //     //send control packet
+        //     testMotorValues[0] = 0;
+        //     testMotorValues[1] = 100;
+        //     testMotorValues[2] = 400;
+        //     Motor1_SendPacket(buildPacket(testMotorValues));
+        // }
+        // motorControlRateControlCounter++;
 
         // ---------------- Sense Data -----------------------------
 
@@ -106,28 +110,27 @@ int main() {
 
         */
 
-        char outString[40];  //does sprintf treat /n as 1 character?
-        sprintf(outString, "%04u,%04u,%04u,%04u,%04u,%03u,%04u,%04u\n",
+        //todo - double buffering?
+        char outString[26];  //does sprintf treat /n as 1 character?
+        sprintf(outString, "%04u,%04u,%04u,%04u,%04u\n",
             sensorValues[0],
             sensorValues[1],
             sensorValues[2],
             sensorValues[3],
-            sensorValues[4],
-            testMotorValues[0],
-            testMotorValues[1],
-            testMotorValues[2]);
-        //also send back voltage, current, requested motor speed, requested tilt angle and requested tilt amount
+            sensorValues[4]);
 
-        /*
-        if (DMA2_Stream0->NDTR == 3) {
-            GPIOC->ODR |= (1<<1);
-        }
-        else {
+        USB_StartTXTransfer(1, outString, 25); //does sprintf squimsh \n into one character?
+
+        // ---------------- Motor Control Packet Forwarding  --------------------------
+
+        //don't send in the USB RX interrupt incase this fails here... Should be fine either way I guess?
+        //Ideally we'd send back a confirmation that the forwarding was sucessfull
+        //but ideally we'd also have more than 2 burn out weeks to finish ig
+        if (currentMotorControlPacket != newMotorControlPacket){
+            //Motor1_SendPacket(currentMotorControlPacket);
             GPIOC->ODR &= ~(1<<1);
-        }*/
-        //USB_StartTXTransfer(1, outBuffer, numSensors * 2);
-        //USB_StartTXTransfer(1, outb, strlen(outb));
-        //USB_StartTXTransfer(1, outString, 39); //does sprintf squimsh \n into one character?
+        }
+
         WaitForTick();
     }
 
@@ -146,12 +149,10 @@ void USB_EP1RXCallBack(uint8_t * RX_buff, uint16_t length) {
     //you wouldn't.... not right in the interrupt handler??? dang gurrll!
     if (length == 4) {
         GPIOC->ODR |= (1<<1);
-        Motor1_SendPacket(*RX_buff);
-        GPIOC->ODR &= ~(1<<1);
+        newMotorControlPacket = *RX_buff;
     }
 
     USB_PrepareReceive(1);
-    //GPIOC->ODR &= ~(1<<1);
 
     /*
     if (USB_StartTXTransfer(1, RX_buff, length) != USB_OK) {
