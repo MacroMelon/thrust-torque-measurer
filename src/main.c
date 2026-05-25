@@ -48,7 +48,7 @@ int main() {
 
     __enable_irq();
 
-    I2C_init_100kHz(0x24);
+    //I2C_init_100kHz(0x24);
 
     //wait for a bit for motor controller to initialise
     ms_delay(1000);
@@ -57,7 +57,7 @@ int main() {
     testMotorValues[0] = 0;
     testMotorValues[1] = 0;
     testMotorValues[2] = 0;
-    Motor1_SendPacket(buildPacket(testMotorValues));
+    //Motor1_SendPacket(buildPacket(testMotorValues));
 
     USB_Init();
 
@@ -88,7 +88,7 @@ int main() {
             testMotorValues[0] = 0;
             testMotorValues[1] = 100;
             testMotorValues[2] = 400;
-            Motor1_SendPacket(buildPacket(testMotorValues));
+            //Motor1_SendPacket(buildPacket(testMotorValues));
         }
         motorControlRateControlCounter++;
 
@@ -127,27 +127,45 @@ int main() {
         }*/
         //USB_StartTXTransfer(1, outBuffer, numSensors * 2);
         //USB_StartTXTransfer(1, outb, strlen(outb));
-        USB_StartTXTransfer(1, outString, 39); //does sprintf squish \n into one character?
+        //USB_StartTXTransfer(1, outString, 39); //does sprintf squimsh \n into one character?
         WaitForTick();
     }
 
 }
 
 void USB_EP1RXCallBack(uint8_t * RX_buff, uint16_t length) {
-    //USB_OUTEPSNAK(1);
-    USB_StartTXTransfer(1, RX_buff, length);
+    USB_OUTEPSNAK(1);
+
+    //dont try sending while is disabled lol
+    //take packet and save it to process later?
+    //or process immediately?
+
+    //you know what would be funny
+    //what if... what if we just built the packet on the computer and just forwarded it here to motor control??
+    //surely not... unless... ????
+    //you wouldn't.... not right in the interrupt handler??? dang gurrll!
+    if (length == 4) {
+        GPIOC->ODR |= (1<<1);
+        Motor1_SendPacket(*RX_buff);
+        GPIOC->ODR &= ~(1<<1);
+    }
+
+    USB_PrepareReceive(1);
+    //GPIOC->ODR &= ~(1<<1);
+
     /*
     if (USB_StartTXTransfer(1, RX_buff, length) != USB_OK) {
         GPIOC->ODR |= (1<<1);
-        ms_delay(500);
-        GPIOC->ODR &= ~(1<<1);
     }
     else {
         GPIOC->ODR |= (1<<1);
+        ms_delay(500);
+        GPIOC->ODR &= ~(1<<1);
     }*/
 }
 
+/*
 void USB_EP1TXTransferCompliteCallBack() {
-    //USB_PrepareReceive(1);
-    //GPIOC->ODR &= ~(1<<1);
-}
+    USB_PrepareReceive(1);
+    GPIOC->ODR &= ~(1<<1);
+}*/
