@@ -146,11 +146,12 @@ void USB_EP1RXCallBack(uint8_t * RX_buff, uint16_t length) {
 
     //you know what would be funny
     //what if... what if we just built the packet on the computer and just forwarded it here to motor control??
-    //surely not... unless... ????
-    //you wouldn't.... not right in the interrupt handler??? dang gurrll!
     if (length == 4) {
         GPIOC->ODR |= (1<<1);
-        newMotorControlPacket = *RX_buff;
+        newMotorControlPacket = RX_buff[0];
+        newMotorControlPacket |= RX_buff[1] << 8;
+        newMotorControlPacket |= RX_buff[2] << 16;
+        newMotorControlPacket |= RX_buff[3] << 24;
     }
 
     USB_PrepareReceive(1);
