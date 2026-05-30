@@ -8,6 +8,7 @@
 #include <stm32f405xx.h>
 
 #define numSensors 5
+#define sampleTimeSetting 7 //set this to 6 (or lower) when going full speed
 
 volatile uint16_t sensorValues[numSensors];
 

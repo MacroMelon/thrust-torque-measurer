@@ -42,7 +42,7 @@ int initADC() {
     //12 bit resolution selected by default
 
     //set channel sequence
-    //3 channels to convert (1 channel is 0, 2 is 1, 3 is 2)
+    //5 channels to convert (1 channel is 0, 2 is 1, 3 is 2)
     ADC1->SQR1 |= 4 << ADC_SQR1_L_Pos;
     //the actual channel order
     ADC1->SQR3 |= 5 << ADC_SQR3_SQ1_Pos;
@@ -51,11 +51,22 @@ int initADC() {
     ADC1->SQR3 |= 14 << ADC_SQR3_SQ4_Pos;
     ADC1->SQR3 |= 15 << ADC_SQR3_SQ5_Pos;
 
-    //set all channel sample time to 15 to stop them affecting each other
-    //or not?
-    //ADC1->SMPR2 |= 1 << ADC_SMPR2_SMP4_Pos;
-    //ADC1->SMPR2 |= 1 << ADC_SMPR2_SMP5_Pos;
-    //ADC1->SMPR2 |= 1 << ADC_SMPR2_SMP6_Pos;
+    /*
+    From STM32f4 datasheet (RM0090), section 11.5 page 272 / 273:
+    The total conversion time is calculated as follows:
+    Tconv = Sampling time + 12 cycles
+    Example:
+    With ADCCLK = 30 MHz and sampling time = 3 cycles:
+    Tconv = 3 + 12 = 15 cycles = 0.5 µs with APB2 at 60 MHz
+    In our case - 1/((1/21000000)*(12+144))
+    where 21000000 is adc clock speed, 144 is num samples
+     */
+    //Todo - dynamically set sample time based on reading rate
+    ADC1->SMPR2 |= sampleTimeSetting << ADC_SMPR2_SMP5_Pos;
+    ADC1->SMPR2 |= sampleTimeSetting << ADC_SMPR2_SMP6_Pos;
+    ADC1->SMPR2 |= sampleTimeSetting << ADC_SMPR2_SMP7_Pos;
+    ADC1->SMPR1 |= sampleTimeSetting << ADC_SMPR1_SMP14_Pos;
+    ADC1->SMPR1 |= sampleTimeSetting << ADC_SMPR1_SMP15_Pos;
 
     //for DMA, either, peripheral -> memory and then memory -> peripheral
     //or try direct peripheral to peripheral based on
