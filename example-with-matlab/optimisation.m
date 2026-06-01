@@ -138,27 +138,56 @@ initialPointsDeNormalised = rescale(initialPoints,[hingeAngleConstraints(1), hin
 
 function objective = responseFunction(x, angleConstraints, lengthConstraints, scaler, throttle, testLength, instrumentSerialObject, instrumentReadingRate, startTimeStripAmount, LPFFrequency)
     deNormalisedParameters = rescale([x.hinge_angle, x.hinge_length],[angleConstraints(1), lengthConstraints(1)], [angleConstraints(2), lengthConstraints(2)], "InputMin",0,"InputMax",1);
-    input("Please attach rotor with angle: " + deNormalisedParameters(1) + " and length: " + deNormalisedParameters(2) + " and press enter... ", "s");
-    %hingeName = input("Please specify hinge file name: ", "s"); % for archival purposes
+    
+    accepted = false;
+    while (~accepted)
+        input("Please attach rotor with angle: " + deNormalisedParameters(1) + " and length: " + deNormalisedParameters(2) + " and press enter... ", "s");
+        hingeName = input("Please specify hinge file name: ", "s"); % for archival purposes
+    
+        % Run Tests ----------------------
+        %before testing, get the motor spinning to ensure everything is mostly
+        %stable
+        disp("Begining test sequences");
+        disp("Starting motor...");
+        write(instrumentSerialObject, buildMotorControlPacket(0, 0, runThrottle), 'uint32');
+        pause(3);
+        
+        %hingeResponse = evaluateRotor(hingeName, scaler, throttle, testLength, instrumentSerialObject, instrumentReadingRate, startTimeStripAmount, LPFFrequency);
+    
+        % test range of scalers
+        % !!! WARNING - DO NOT GO ABOVE 400 FOR PROLOGNED PERIODS OF TIME - RISK OF SEVERE MOTOR OVERHEATING !!!
+        scalerValuesToTest = 100:10:400;
+        %scalerValuesToTest = [200, 200, 200, 250, 250, 250, 300, 300, 300];
+        scalerValuesToTest = flip(scalerValuesToTest);  % Remember, test high scaler values first for motor overheating reasons
+        rotorResponseValues = cell2mat(cellfun(@(scalerValue) evaluateRotor(hingeName, scalerValue, runThrottle, unitTestlength, measurementInstrumentation, readingRate, rampTime, lowPassFilterFrequency), num2cell(scalerValuesToTest), 'UniformOutput', false));
+        
+        %fake objective functions, for testing the framework
+        %hingeResponse = [((0.5-((x.hinge_angle-0.5)^2)) + (0.5-((x.hinge_length-0.5)^2)))*200, 0, 0];
+        %hingeResponse = [(x.hinge_angle+x.hinge_length)*200, 0, 0];
+        
+        disp("Finished Test sequences, Slowing and halting motor...");
+        haltRotor(instrumentSerialObject);
+        disp("Motor Halted!");
 
-    % Run Tests ----------------------
-    %before testing, get the motor spinning to ensure everything is mostly
-    %stable
-    disp("Begining test sequences");
-    disp("Starting motor...");
-    write(instrumentSerialObject, buildMotorControlPacket(0, 0, runThrottle), 'uint32');
-    pause(3);
-    
-    hingeResponse = evaluateRotor(hingeName, scaler, throttle, testLength, instrumentSerialObject, instrumentReadingRate, startTimeStripAmount, LPFFrequency);
-    %fake objective functions, for testing the framework
-    %hingeResponse = [((0.5-((x.hinge_angle-0.5)^2)) + (0.5-((x.hinge_length-0.5)^2)))*200, 0, 0];
-    %hingeResponse = [(x.hinge_angle+x.hinge_length)*200, 0, 0];
-    
-    disp("Finished Test sequences, Slowing and halting motor...");
-    haltRotor(instrumentSerialObject);
-    disp("Motor Halted!");
-    
-    objective = -hingeResponse(1);
+        % do least squares regression
+        bestFitCurve = polyfit(scalerValuesToTest, rotorResponseValues(1,:), 2);
+        disp("Best fit curve coefficients: ");
+        disp(bestFitCurve);
+
+        % plot everything
+        plot(scalerValuesToTest, rotorResponseValues(1,:), '.r', 'MarkerSize',20);
+        hold on;
+        plot(scalerValuesToTest, polyval(bestFitCurve, scalerValuesToTest), '.b', 'MarkerSize',10);
+        hold off;
+
+        %ask if okay or run again
+        if (input("Accept these results or run again? (y/n): ", "s") == 'y')
+            accepted = true;
+            %save results
+            writematrix([scalerValuesToTest; rotorResponseValues], "optimisation_run_transformed_results/" + hingeName + "_transformed.csv");
+            objective = -bestFitCurve(1);
+        end
+    end
 end
 
 % seems like on the first run, NextPoint contains an empty table
@@ -176,13 +205,13 @@ end
 
 
 %----- Test Sequence Parameters -----
-unitTestlength = 6; % in seconds (ideally above 7 ish)
+unitTestlength = 5; % in seconds (ideally above 7 ish)
 runScaler = 300;
 runThrottle = 1000;
 
 %----- Instrumentation parameters -----
 readingRate = 1500; % in Hz (Sps)
-rampTime = 1.5; % in seconds (ideally 2)
+rampTime = 1.3; % in seconds (ideally 2)
 lowPassFilterFrequency = 200; % in Hz
 port = "/dev/ttyACM0";
 %although baudrate doesnt matter, specify anyways
