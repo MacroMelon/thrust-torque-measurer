@@ -136,7 +136,7 @@ numStartPoints = 6;
 initialPoints = [0.957484147423455,0.476895926195220;0.415673824722476,0.975117665740157;0.716820546223886,0.290415290979377;0.518182791244034,0.526547124002723;0.173451429132426,0.124286303504745;0.075464078339366,0.697619195655197];
 initialPointsDeNormalised = rescale(initialPoints,[hingeAngleConstraints(1), hingeLengthConstraints(1)], [hingeAngleConstraints(2), hingeLengthConstraints(2)], "InputMin",0,"InputMax",1);
 
-function objective = responseFunction(x, angleConstraints, lengthConstraints, scaler, throttle, testLength, instrumentSerialObject, instrumentReadingRate, startTimeStripAmount, LPFFrequency)
+function objective = responseFunction(x, angleConstraints, lengthConstraints, scalerValuesToTest, throttle, testLength, instrumentSerialObject, instrumentReadingRate, startTimeStripAmount, LPFFrequency)
     deNormalisedParameters = rescale([x.hinge_angle, x.hinge_length],[angleConstraints(1), lengthConstraints(1)], [angleConstraints(2), lengthConstraints(2)], "InputMin",0,"InputMax",1);
     
     accepted = false;
@@ -153,13 +153,8 @@ function objective = responseFunction(x, angleConstraints, lengthConstraints, sc
         pause(3);
         
         %hingeResponse = evaluateRotor(hingeName, scaler, throttle, testLength, instrumentSerialObject, instrumentReadingRate, startTimeStripAmount, LPFFrequency);
-    
-        % test range of scalers
-        % !!! WARNING - DO NOT GO ABOVE 400 FOR PROLOGNED PERIODS OF TIME - RISK OF SEVERE MOTOR OVERHEATING !!!
-        scalerValuesToTest = 100:10:400;
-        %scalerValuesToTest = [200, 200, 200, 250, 250, 250, 300, 300, 300];
-        scalerValuesToTest = flip(scalerValuesToTest);  % Remember, test high scaler values first for motor overheating reasons
-        rotorResponseValues = cell2mat(cellfun(@(scalerValue) evaluateRotor(hingeName, scalerValue, runThrottle, unitTestlength, measurementInstrumentation, readingRate, rampTime, lowPassFilterFrequency), num2cell(scalerValuesToTest), 'UniformOutput', false));
+        
+        rotorResponseValues = cell2mat(cellfun(@(scalerValue) evaluateRotor(hingeName, scalerValue, throttle, testLength, instrumentSerialObject, instrumentReadingRate, startTimeStripAmount, LPFFrequency), num2cell(scalerValuesToTest), 'UniformOutput', false));
         
         %fake objective functions, for testing the framework
         %hingeResponse = [((0.5-((x.hinge_angle-0.5)^2)) + (0.5-((x.hinge_length-0.5)^2)))*200, 0, 0];
@@ -179,12 +174,17 @@ function objective = responseFunction(x, angleConstraints, lengthConstraints, sc
         hold on;
         plot(scalerValuesToTest, polyval(bestFitCurve, scalerValuesToTest), '.b', 'MarkerSize',10);
         hold off;
+        axis([0 250 100 400]);
+        currentPlot = gca;
 
         %ask if okay or run again
         if (input("Accept these results or run again? (y/n): ", "s") == 'y')
             accepted = true;
             %save results
             writematrix([scalerValuesToTest; rotorResponseValues], "optimisation_run_transformed_results/" + hingeName + "_transformed.csv");
+            %save graph
+            exportgraphics(currentPlot,"optimisation_hinge_performance_graphs/" + hingeName + ".png");
+            %performance metric is 1st order coefficient of best fit curve
             objective = -bestFitCurve(1);
         end
     end
@@ -206,8 +206,12 @@ end
 
 %----- Test Sequence Parameters -----
 unitTestlength = 5; % in seconds (ideally above 7 ish)
-runScaler = 300;
 runThrottle = 1000;
+% test range of scalers
+% !!! WARNING - DO NOT GO ABOVE 400 FOR PROLOGNED PERIODS OF TIME - RISK OF SEVERE MOTOR OVERHEATING !!!
+runScalers = 100:10:400;    %also don't forget to update axis ranges
+%runScalers = [200, 200, 200, 250, 250, 250, 300, 300, 300];
+runScalers = flip(runScalers);  % Remember, test high scaler values first for motor overheating reasons
 
 %----- Instrumentation parameters -----
 readingRate = 1500; % in Hz (Sps)
@@ -220,7 +224,7 @@ measurementInstrumentation = serialport(port, 9600);
 
 % ----------- Start bayesopt -----------
 
-bayesoptResponseFunction = @(x)responseFunction(x, hingeAngleConstraints, hingeLengthConstraints, runScaler, runThrottle, unitTestlength, measurementInstrumentation, readingRate, rampTime, lowPassFilterFrequency);
+bayesoptResponseFunction = @(x)responseFunction(x, hingeAngleConstraints, hingeLengthConstraints, runScalers, runThrottle, unitTestlength, measurementInstrumentation, readingRate, rampTime, lowPassFilterFrequency);
 bayesoptOutputFunction = @(results, state)onBayesoptIteration(results, state, hingeAngleConstraints, hingeLengthConstraints);
 
 % initial run
