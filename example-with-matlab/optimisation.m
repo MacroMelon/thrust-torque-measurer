@@ -143,6 +143,9 @@ function objective = responseFunction(x, angleConstraints, lengthConstraints, sc
     while (~accepted)
         input("Please attach rotor with angle: " + deNormalisedParameters(1) + " and length: " + deNormalisedParameters(2) + " and press enter... ", "s");
         hingeName = input("Please specify hinge file name: ", "s"); % for archival purposes
+        
+        % For when we just want to input the object function value
+        %bestFitCurve = [0 input("Enter objective function value: ") 0];
     
         % Run Tests ----------------------
         %before testing, get the motor spinning to ensure everything is mostly
@@ -186,7 +189,7 @@ function objective = responseFunction(x, angleConstraints, lengthConstraints, sc
             %save graph
             exportgraphics(currentPlot,"optimisation_hinge_performance_graphs/" + hingeName + ".png");
             %performance metric is 1st order coefficient of best fit curve
-            objective = -bestFitCurve(1);
+            objective = -(bestFitCurve(2));
         end
     end
 end
@@ -230,7 +233,7 @@ bayesoptOutputFunction = @(results, state)onBayesoptIteration(results, state, hi
 
 % initial run
 % maybe look into 'InitialObjective' argument
-bayesopt(bayesoptResponseFunction, [a, l], 'MaxObjectiveEvaluations', 20, 'OutputFcn',{@saveToFile bayesoptOutputFunction}, 'PlotFcn',{@plotAcquisitionFunction, @plotObjectiveModel}, 'SaveFileName','BayesoptResults.mat', 'InitialX',array2table(initialPoints));
+bayesopt(bayesoptResponseFunction, [a, l], 'MaxObjectiveEvaluations', 20, 'AcquisitionFunctionName', 'expected-improvement-plus', 'OutputFcn',{@saveToFile bayesoptOutputFunction}, 'PlotFcn',{@plotAcquisitionFunction, @plotObjectiveModel}, 'SaveFileName','BayesoptResults.mat', 'InitialX',array2table(initialPoints));
 % once saved file exists
 %bayesResults = load("BayesoptResults.mat", "-mat").BayesoptResults;
 %resume(bayesResults);
