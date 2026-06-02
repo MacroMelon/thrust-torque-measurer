@@ -149,7 +149,7 @@ function objective = responseFunction(x, angleConstraints, lengthConstraints, sc
         %stable
         disp("Begining test sequences");
         disp("Starting motor...");
-        write(instrumentSerialObject, buildMotorControlPacket(0, 0, runThrottle), 'uint32');
+        write(instrumentSerialObject, buildMotorControlPacket(0, 0, throttle), 'uint32');
         pause(3);
         
         %hingeResponse = evaluateRotor(hingeName, scaler, throttle, testLength, instrumentSerialObject, instrumentReadingRate, startTimeStripAmount, LPFFrequency);
@@ -170,11 +170,12 @@ function objective = responseFunction(x, angleConstraints, lengthConstraints, sc
         disp(bestFitCurve);
 
         % plot everything
+        figure;
         plot(scalerValuesToTest, rotorResponseValues(1,:), '.r', 'MarkerSize',20);
         hold on;
         plot(scalerValuesToTest, polyval(bestFitCurve, scalerValuesToTest), '.b', 'MarkerSize',10);
         hold off;
-        axis([0 250 100 400]);
+        axis([100 400 0 250]);
         currentPlot = gca;
 
         %ask if okay or run again
@@ -205,7 +206,7 @@ end
 
 
 %----- Test Sequence Parameters -----
-unitTestlength = 5; % in seconds (ideally above 7 ish)
+unitTestlength = 5; % in seconds (ideally above 5 ish)
 runThrottle = 1000;
 % test range of scalers
 % !!! WARNING - DO NOT GO ABOVE 400 FOR PROLOGNED PERIODS OF TIME - RISK OF SEVERE MOTOR OVERHEATING !!!
@@ -215,7 +216,7 @@ runScalers = flip(runScalers);  % Remember, test high scaler values first for mo
 
 %----- Instrumentation parameters -----
 readingRate = 1500; % in Hz (Sps)
-rampTime = 1.3; % in seconds (ideally 2)
+rampTime = 1.3; % in seconds (ideally 1.4)
 lowPassFilterFrequency = 200; % in Hz
 port = "/dev/ttyACM0";
 %although baudrate doesnt matter, specify anyways
