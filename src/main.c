@@ -69,7 +69,7 @@ int main() {
     initDAC();
 
     //try to offset instrumentation amplifier REF voltage to try and reduce common mode voltage related issues
-    setIAVref(2700);  //max 2^12 = 4096
+    setIAVref(3700);  //max 2^12 = 4096
 
     //wait for a bit, just for... ummm reasons I guess?
     ms_delay(2000);

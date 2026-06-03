@@ -125,16 +125,6 @@ end
 %-------------------------------------------------------
 
 %----- Bayesian optimisation stuff -----
-hingeAngleConstraints = [30,70];
-hingeLengthConstraints = [0,6];
-a = optimizableVariable('hinge_angle', [0,1]);
-l = optimizableVariable('hinge_length', [0,1]);
-
-%generate the latin hypercube arrays for initial points
-numStartPoints = 6;
-%initialPoints = lhsdesign(numStartPoints, 2);
-initialPoints = [0.957484147423455,0.476895926195220;0.415673824722476,0.975117665740157;0.716820546223886,0.290415290979377;0.518182791244034,0.526547124002723;0.173451429132426,0.124286303504745;0.075464078339366,0.697619195655197];
-initialPointsDeNormalised = rescale(initialPoints,[hingeAngleConstraints(1), hingeLengthConstraints(1)], [hingeAngleConstraints(2), hingeLengthConstraints(2)], "InputMin",0,"InputMax",1);
 
 function objective = responseFunction(x, angleConstraints, lengthConstraints, scalerValuesToTest, throttle, testLength, instrumentSerialObject, instrumentReadingRate, startTimeStripAmount, LPFFrequency)
     deNormalisedParameters = rescale([x.hinge_angle, x.hinge_length],[angleConstraints(1), lengthConstraints(1)], [angleConstraints(2), lengthConstraints(2)], "InputMin",0,"InputMax",1);
@@ -178,7 +168,7 @@ function objective = responseFunction(x, angleConstraints, lengthConstraints, sc
         hold on;
         plot(scalerValuesToTest, polyval(bestFitCurve, scalerValuesToTest), '.b', 'MarkerSize',10);
         hold off;
-        axis([100 400 0 250]);
+        axis([0 400 0 250]);
         currentPlot = gca;
 
         %ask if okay or run again
@@ -207,19 +197,33 @@ function stop = onBayesoptIteration(results, state, angleConstraints, lengthCons
     end  
 end
 
+% --- Bayesian optimisation parameters -----
+hingeAngleConstraints = [30,70];
+hingeLengthConstraints = [0,6];
+a = optimizableVariable('hinge_angle', [0,1]);
+l = optimizableVariable('hinge_length', [0,1]);
+
+%generate the latin hypercube arrays for initial points
+numStartPoints = 6;
+%initialPoints = lhsdesign(numStartPoints, 2);
+initialPoints = [0.957484147423455,0.476895926195220;0.415673824722476,0.975117665740157;0.716820546223886,0.290415290979377;0.518182791244034,0.526547124002723;0.173451429132426,0.124286303504745;0.075464078339366,0.697619195655197; 0.0025, 0.9867; 0.8350, 0.7633; 0.0025, 0.7400; 0.2100, 0.9117; 0.7250, 0.9633; 0.1400, 0.9867];
+%initialPointsDeNormalised = rescale(initialPoints,[hingeAngleConstraints(1), hingeLengthConstraints(1)], [hingeAngleConstraints(2), hingeLengthConstraints(2)], "InputMin",0,"InputMax",1);
+
+%initialPoints = [0.9575, 0.4767; 0.4150, 0.9750; 0.7175, 0.2900; 0.5175, 0.5267; 0.1725, 0.1250; 0.0025, 0.7400; 0.0025, 0.9867; 0.8350, 0.7633; 0.2100, 0.9117];
+
 
 %----- Test Sequence Parameters -----
-unitTestlength = 5; % in seconds (ideally above 5 ish)
+unitTestlength = 4; % in seconds (ideally above 5 ish)
 runThrottle = 1000;
 % test range of scalers
 % !!! WARNING - DO NOT GO ABOVE 400 FOR PROLOGNED PERIODS OF TIME - RISK OF SEVERE MOTOR OVERHEATING !!!
-runScalers = 100:10:400;    %also don't forget to update axis ranges
+runScalers = 0:10:400;    %also don't forget to update axis ranges
 %runScalers = [200, 200, 200, 250, 250, 250, 300, 300, 300];
 runScalers = flip(runScalers);  % Remember, test high scaler values first for motor overheating reasons
 
 %----- Instrumentation parameters -----
 readingRate = 1500; % in Hz (Sps)
-rampTime = 1.3; % in seconds (ideally 1.4)
+rampTime = 1; % in seconds (ideally 1.4)
 lowPassFilterFrequency = 200; % in Hz
 port = "/dev/ttyACM0";
 %although baudrate doesnt matter, specify anyways
@@ -233,9 +237,9 @@ bayesoptOutputFunction = @(results, state)onBayesoptIteration(results, state, hi
 
 % initial run
 % maybe look into 'InitialObjective' argument
-bayesopt(bayesoptResponseFunction, [a, l], 'MaxObjectiveEvaluations', 20, 'AcquisitionFunctionName', 'expected-improvement-plus', 'OutputFcn',{@saveToFile bayesoptOutputFunction}, 'PlotFcn',{@plotAcquisitionFunction, @plotObjectiveModel}, 'SaveFileName','BayesoptResults.mat', 'InitialX',array2table(initialPoints));
+%bayesopt(bayesoptResponseFunction, [a, l], 'MaxObjectiveEvaluations', 20, 'AcquisitionFunctionName', 'expected-improvement-plus', 'OutputFcn',{@saveToFile bayesoptOutputFunction}, 'PlotFcn',{@plotAcquisitionFunction, @plotObjectiveModel}, 'SaveFileName','BayesoptResults.mat', 'InitialX',array2table(initialPoints));
 % once saved file exists
-%bayesResults = load("BayesoptResults.mat", "-mat").BayesoptResults;
-%resume(bayesResults);
+bayesResults = load("BayesoptResults.mat", "-mat").BayesoptResults;
+resume(bayesResults);
 
 disp("Done! :D");

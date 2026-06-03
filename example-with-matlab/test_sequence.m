@@ -131,7 +131,7 @@ runThrottle = 1000;
 
 %----- Instrumentation parameters -----
 readingRate = 1500; % in Hz (Sps)
-rampTime = 0.6; % in seconds (ideally 2)
+rampTime = 0.7; % in seconds (ideally 2)
 lowPassFilterFrequency = 200; % in Hz
 port = "/dev/ttyACM0";
 %although baudrate doesnt matter, specify anyways
@@ -156,7 +156,7 @@ disp("Begining test sequences");
 
 % scaler testing -------
 % !!! WARNING - DO NOT GO ABOVE 400 FOR PROLOGNED PERIODS OF TIME - RISK OF SEVERE MOTOR OVERHEATING !!!
-scalerValuesToTest = 0:10:500;
+scalerValuesToTest = 0:10:400;
 %scalerValuesToTest = [200, 200, 200, 250, 250, 250, 300, 300, 300];
 scalerValuesToTest = flip(scalerValuesToTest);  % Remember, test high scaler values first for motor overheating reasons
 rotorResponseValues = cell2mat(cellfun(@(scalerValue) evaluateRotor(hingeName, scalerValue, runThrottle, unitTestlength, measurementInstrumentation, readingRate, rampTime, lowPassFilterFrequency), num2cell(scalerValuesToTest), 'UniformOutput', false));
@@ -171,13 +171,27 @@ haltRotor(measurementInstrumentation);
 disp("Motor Halted!");
 disp("Done! :D");
 
+% do least squares regression
+bestFitCurve = polyfit(scalerValuesToTest, rotorResponseValues(1,:), 2);
+disp("Best fit curve coefficients: ");
+disp(bestFitCurve);
+
+writematrix([scalerValuesToTest; rotorResponseValues], "testing_results/" + hingeName + "_results.csv");
+
+% plot everything
+figure;
 plot(scalerValuesToTest, rotorResponseValues(1,:), '.r', 'MarkerSize',20);
-figure;
-plot(scalerValuesToTest, rotorResponseValues(3,:), '.r', 'MarkerSize',20);
-figure;
-plot(rotorResponseValues(3,:), rotorResponseValues(1,:), '.r', 'MarkerSize',20);
-figure;
-plot(scalerValuesToTest, rotorResponseValues(2,:), '.r', 'MarkerSize',20);
+hold on;
+plot(scalerValuesToTest, polyval(bestFitCurve, scalerValuesToTest), '.b', 'MarkerSize',10);
+hold off;
+
+%plot(scalerValuesToTest, rotorResponseValues(1,:), '.r', 'MarkerSize',20);
+%figure;
+%plot(scalerValuesToTest, rotorResponseValues(3,:), '.r', 'MarkerSize',20);
+%figure;
+%plot(rotorResponseValues(3,:), rotorResponseValues(1,:), '.r', 'MarkerSize',20);
+%figure;
+%plot(scalerValuesToTest, rotorResponseValues(2,:), '.r', 'MarkerSize',20);
 
 %plot(throttleValuesToTest, rotorResponseValues(2,:), '.r', 'MarkerSize',20);
 %figure;
