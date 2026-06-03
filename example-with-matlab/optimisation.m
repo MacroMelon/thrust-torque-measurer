@@ -237,9 +237,9 @@ bayesoptOutputFunction = @(results, state)onBayesoptIteration(results, state, hi
 
 % initial run
 % maybe look into 'InitialObjective' argument
-%bayesopt(bayesoptResponseFunction, [a, l], 'MaxObjectiveEvaluations', 20, 'AcquisitionFunctionName', 'expected-improvement-plus', 'OutputFcn',{@saveToFile bayesoptOutputFunction}, 'PlotFcn',{@plotAcquisitionFunction, @plotObjectiveModel}, 'SaveFileName','BayesoptResults.mat', 'InitialX',array2table(initialPoints));
+bayesopt(bayesoptResponseFunction, [a, l], 'MaxObjectiveEvaluations', 20, 'AcquisitionFunctionName', 'expected-improvement-plus', 'OutputFcn',{@saveToFile bayesoptOutputFunction}, 'PlotFcn',{@plotAcquisitionFunction, @plotObjectiveModel}, 'SaveFileName','BayesoptResults.mat', 'InitialX',array2table(initialPoints));
 % once saved file exists
-bayesResults = load("BayesoptResults.mat", "-mat").BayesoptResults;
-resume(bayesResults);
+%bayesResults = load("BayesoptResults.mat", "-mat").BayesoptResults;
+%resume(bayesResults);
 
 disp("Done! :D");
