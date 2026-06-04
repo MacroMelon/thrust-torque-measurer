@@ -206,11 +206,8 @@ l = optimizableVariable('hinge_length', [0,1]);
 %generate the latin hypercube arrays for initial points
 numStartPoints = 6;
 %initialPoints = lhsdesign(numStartPoints, 2);
-initialPoints = [0.957484147423455,0.476895926195220;0.415673824722476,0.975117665740157;0.716820546223886,0.290415290979377;0.518182791244034,0.526547124002723;0.173451429132426,0.124286303504745;0.075464078339366,0.697619195655197; 0.0025, 0.9867; 0.8350, 0.7633; 0.0025, 0.7400; 0.2100, 0.9117; 0.7250, 0.9633; 0.1400, 0.9867];
+initialPoints = [0.957484147423455,0.476895926195220;0.415673824722476,0.975117665740157;0.716820546223886,0.290415290979377;0.518182791244034,0.526547124002723;0.173451429132426,0.124286303504745;0.075464078339366,0.697619195655197];
 %initialPointsDeNormalised = rescale(initialPoints,[hingeAngleConstraints(1), hingeLengthConstraints(1)], [hingeAngleConstraints(2), hingeLengthConstraints(2)], "InputMin",0,"InputMax",1);
-
-%initialPoints = [0.9575, 0.4767; 0.4150, 0.9750; 0.7175, 0.2900; 0.5175, 0.5267; 0.1725, 0.1250; 0.0025, 0.7400; 0.0025, 0.9867; 0.8350, 0.7633; 0.2100, 0.9117];
-
 
 %----- Test Sequence Parameters -----
 unitTestlength = 4; % in seconds (ideally above 5 ish)
@@ -242,4 +239,4 @@ bayesopt(bayesoptResponseFunction, [a, l], 'MaxObjectiveEvaluations', 20, 'Acqui
 %bayesResults = load("BayesoptResults.mat", "-mat").BayesoptResults;
 %resume(bayesResults);
 
-disp("Done! :D");
+disp("Done! :D")
